@@ -52,10 +52,9 @@ pipeline {
             }
         }
 
-        stage('Push') {
-            when {
-                branch 'main'
-            }
+       when {
+    expression { true }
+}
 
             steps {
                 withCredentials([
