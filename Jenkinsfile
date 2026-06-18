@@ -8,7 +8,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -47,30 +46,26 @@ pipeline {
 
             post {
                 failure {
-                    echo 'Tests echoues ou couverture insuffisante'
+                    echo 'Tests echoues ou coverage insuffisant'
                 }
             }
         }
 
-       when {
-    expression { true }
-}
+        stage('Push') {
+            when {
+                branch 'main'
+            }
 
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-token',
-                        usernameVariable: 'REGISTRY_USER',
-                        passwordVariable: 'REGISTRY_PASS'
-                    )
-                ]) {
-
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-token',
+                    usernameVariable: 'REGISTRY_USER',
+                    passwordVariable: 'REGISTRY_PASS'
+                )]) {
                     sh """
                     echo \$REGISTRY_PASS | docker login ghcr.io -u \$REGISTRY_USER --password-stdin
-
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
-
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${IMAGE_NAME}:latest
                     docker push ${REGISTRY}/${IMAGE_NAME}:latest
                     """
@@ -80,7 +75,6 @@ pipeline {
     }
 
     post {
-
         always {
             sh 'docker compose down -v 2>/dev/null || true'
         }
