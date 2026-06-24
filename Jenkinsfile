@@ -76,7 +76,7 @@ pipeline {
                     --network cicd-network \
                     --volumes-from jenkins \
                     -w "$WORKSPACE" \
-                    -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                    -e SONAR_HOST_URL=http://sonarqube:9000
                     -e SONAR_TOKEN="$SONARQUBE_TOKEN" \
                     sonarsource/sonar-scanner-cli:latest \
                     sonar-scanner \
