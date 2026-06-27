@@ -29,6 +29,30 @@ pipeline {
             }
         }
 
+        stage('Terraform Validate') {
+            steps {
+                sh '''
+                docker run --rm \
+                --volumes-from jenkins \
+                -w $WORKSPACE/infra \
+                hashicorp/terraform:latest \
+                init -backend=false -input=false
+
+                docker run --rm \
+                --volumes-from jenkins \
+                -w $WORKSPACE/infra \
+                hashicorp/terraform:latest \
+                fmt -check
+
+                docker run --rm \
+                --volumes-from jenkins \
+                -w $WORKSPACE/infra \
+                hashicorp/terraform:latest \
+                validate
+                '''
+            }
+        }
+
         stage('Build & Test') {
             steps {
                 sh '''
@@ -59,87 +83,38 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')
-    }
+            environment {
+                SONARQUBE_TOKEN = credentials('sonar-token')
+            }
 
-    steps {
-        withSonarQubeEnv('sonarqube') {
-            sh '''
-            docker run --rm \
-            --network cicd-network \
-            --volumes-from jenkins \
-            -w "$WORKSPACE" \
-            -e SONAR_HOST_URL=http://sonarqube:9000 \
-            -e SONAR_TOKEN="$SONARQUBE_TOKEN" \
-            sonarsource/sonar-scanner-cli:latest \
-            sonar-scanner \
-            -Dsonar.projectKey=sentiment-ai \
-            -Dsonar.projectName=SentimentAI \
-            -Dsonar.projectBaseDir="$WORKSPACE" \
-            -Dsonar.sources=src \
-            -Dsonar.python.version=3.11 \
-            -Dsonar.python.coverage.reportPaths=coverage.xml \
-            -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.scanner.metadataFilePath="$WORKSPACE/report-task.txt"
-            '''
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh '''
+                    docker run --rm \
+                    --network cicd-network \
+                    --volumes-from jenkins \
+                    -w "$WORKSPACE" \
+                    -e SONAR_HOST_URL=http://sonarqube:9000 \
+                    -e SONAR_TOKEN="$SONARQUBE_TOKEN" \
+                    sonarsource/sonar-scanner-cli:latest \
+                    sonar-scanner \
+                    -Dsonar.projectKey=sentiment-ai \
+                    -Dsonar.projectName=SentimentAI \
+                    -Dsonar.projectBaseDir="$WORKSPACE" \
+                    -Dsonar.sources=src \
+                    -Dsonar.python.version=3.11 \
+                    -Dsonar.python.coverage.reportPaths=coverage.xml \
+                    -Dsonar.sourceEncoding=UTF-8 \
+                    -Dsonar.scanner.metadataFilePath="$WORKSPACE/report-task.txt"
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Quality Gate') {
             steps {
-        timeout(time: 15, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
-        }
-    }
-}
-
-stage('Terraform Init') {
-    steps {
-        dir('infra') {
-            sh '''
-            docker run --rm \
-              --volumes-from jenkins \
-              -w $WORKSPACE/infra \
-              hashicorp/terraform:latest \
-              init
-            '''
-        }
-    }
-}
-
-stage('Terraform Plan') {
-    steps {
-        dir('infra') {
-            sh '''
-            docker run --rm \
-              --volumes-from jenkins \
-              -w $WORKSPACE/infra \
-              hashicorp/terraform:latest \
-              plan -out=tfplan
-            '''
-        }
-    }
-}
-
-         stage('Terraform Apply') {
-            when {
-                expression {
-                    env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
-                }
-            }
-            steps {
-                dir('infra') {
-                    sh '''
-                    docker rm -f sentiment-staging 2>/dev/null || true
-
-                    docker run --rm \
-                      --volumes-from jenkins \
-                      -w $WORKSPACE/infra \
-                      hashicorp/terraform:latest \
-                      apply -auto-approve tfplan
-                    '''
+                timeout(time: 15, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -148,11 +123,11 @@ stage('Terraform Plan') {
             steps {
                 sh '''
                 docker run --rm \
-                  -v /var/run/docker.sock:/var/run/docker.sock \
-                  aquasec/trivy:latest image \
-                  --severity HIGH,CRITICAL \
-                  --exit-code 0 \
-                  ${IMAGE_NAME}:${IMAGE_TAG}
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                aquasec/trivy:latest image \
+                --severity HIGH,CRITICAL \
+                --exit-code 0 \
+                ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
@@ -163,6 +138,7 @@ stage('Terraform Plan') {
                     env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
                 }
             }
+
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'github-token',
@@ -180,20 +156,47 @@ stage('Terraform Plan') {
             }
         }
 
+        stage('Terraform Apply') {
+            when {
+                expression {
+                    env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                sh '''
+                docker rm -f sentiment-staging 2>/dev/null || true
+
+                docker run --rm \
+                --volumes-from jenkins \
+                -w $WORKSPACE/infra \
+                hashicorp/terraform:latest \
+                init -input=false
+
+                docker run --rm \
+                --volumes-from jenkins \
+                -w $WORKSPACE/infra \
+                hashicorp/terraform:latest \
+                apply -auto-approve \
+                -var="image_tag=${IMAGE_TAG}"
+                '''
+            }
+        }
+
         stage('Deploy Staging') {
             when {
                 expression {
                     env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
                 }
             }
+
             steps {
                 sh '''
                 curl -f http://localhost:8001/health || exit 1
                 '''
             }
         }
-
-}
+    }
 
     post {
         always {
