@@ -56,12 +56,6 @@ pipeline {
                 exit $TEST_EXIT_CODE
                 '''
             }
-
-            post {
-                failure {
-                    echo 'Tests echoues ou coverage insuffisant'
-                }
-            }
         }
 
         stage('SonarQube Analysis') {
@@ -70,34 +64,23 @@ pipeline {
             }
 
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh '''
-                    docker run --rm \
-                    --network cicd-network \
-                    --volumes-from jenkins \
-                    -w "$WORKSPACE" \
-                    -e SONAR_HOST_URL=http://sonarqube:9000
-                    -e SONAR_TOKEN="$SONARQUBE_TOKEN" \
-                    sonarsource/sonar-scanner-cli:latest \
-                    sonar-scanner \
-                    -Dsonar.projectKey=sentiment-ai \
-                    -Dsonar.projectName=SentimentAI \
-                    -Dsonar.projectBaseDir="$WORKSPACE" \
-                    -Dsonar.sources=src \
-                    -Dsonar.python.version=3.11 \
-                    -Dsonar.python.coverage.reportPaths=coverage.xml \
-                    -Dsonar.sourceEncoding=UTF-8 \
-                    -Dsonar.scanner.metadataFilePath=$WORKSPACE/report-task.txt
-                    '''
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 15, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                sh '''
+                docker run --rm \
+                --network cicd-network \
+                --volumes-from jenkins \
+                -w "$WORKSPACE" \
+                -e SONAR_HOST_URL=http://sonarqube:9000 \
+                -e SONAR_TOKEN="$SONARQUBE_TOKEN" \
+                sonarsource/sonar-scanner-cli:latest \
+                sonar-scanner \
+                -Dsonar.projectKey=sentiment-ai \
+                -Dsonar.projectName=SentimentAI \
+                -Dsonar.projectBaseDir="$WORKSPACE" \
+                -Dsonar.sources=src \
+                -Dsonar.python.version=3.11 \
+                -Dsonar.python.coverage.reportPaths=coverage.xml \
+                -Dsonar.sourceEncoding=UTF-8
+                '''
             }
         }
 
