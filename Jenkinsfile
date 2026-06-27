@@ -193,6 +193,7 @@ stage('Terraform Plan') {
             }
         }
 
+}
 
 
 
