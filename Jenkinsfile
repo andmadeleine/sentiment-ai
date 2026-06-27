@@ -132,24 +132,32 @@ pipeline {
             }
         }
     
-        stage('Deploy Staging') {
-                when {
-                    expression {
-                env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
-            }
-        }
-
-        steps {
-            echo "Deploiement de ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} en staging..."
-
-            sh '''
-            docker compose -f docker-compose.yml -p staging down 2>/dev/null || true
-            docker compose -f docker-compose.yml -p staging up -d
-            echo "Staging disponible sur http://localhost:8001"
-            '''
+stage('Deploy Staging') {
+    when {
+        expression {
+            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
         }
     }
+
+    steps {
+        echo "Deploiement de ${IMAGE_NAME}:${IMAGE_TAG} en staging"
+
+        sh '''
+        docker rm -f sentiment-staging 2>/dev/null || true
+
+        docker run -d \
+          --name sentiment-staging \
+          --network cicd-network \
+          -p 8001:8000 \
+          sentiment-ai:${IMAGE_TAG}
+
+        docker ps | grep sentiment-staging
+        echo "Staging disponible sur http://localhost:8001/health"
+        '''
+    }
 }
+}
+
 
 
     post {
