@@ -99,7 +99,11 @@ stage('Terraform Init') {
     steps {
         dir('infra') {
             sh '''
-            terraform init
+            docker run --rm \
+              --volumes-from jenkins \
+              -w $WORKSPACE/infra \
+              hashicorp/terraform:latest \
+              init
             '''
         }
     }
@@ -109,7 +113,11 @@ stage('Terraform Plan') {
     steps {
         dir('infra') {
             sh '''
-            terraform plan -out=tfplan
+            docker run --rm \
+              --volumes-from jenkins \
+              -w $WORKSPACE/infra \
+              hashicorp/terraform:latest \
+              plan -out=tfplan
             '''
         }
     }
@@ -125,7 +133,11 @@ stage('Terraform Apply') {
     steps {
         dir('infra') {
             sh '''
-            terraform apply -auto-approve tfplan
+            docker run --rm \
+              --volumes-from jenkins \
+              -w $WORKSPACE/infra \
+              hashicorp/terraform:latest \
+              apply -auto-approve tfplan
             '''
         }
     }
