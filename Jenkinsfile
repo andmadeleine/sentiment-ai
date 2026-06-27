@@ -123,54 +123,39 @@ stage('Terraform Plan') {
     }
 }
 
-stage('Terraform Apply') {
-    when {
-        expression {
-            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+         stage('Terraform Apply') {
+            when {
+                expression {
+                    env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                }
+            }
+            steps {
+                dir('infra') {
+                    sh '''
+                    docker rm -f sentiment-staging 2>/dev/null || true
+
+                    docker run --rm \
+                      --volumes-from jenkins \
+                      -w $WORKSPACE/infra \
+                      hashicorp/terraform:latest \
+                      apply -auto-approve tfplan
+                    '''
+                }
+            }
         }
-    }
-
-    steps {
-        dir('infra') {
-            sh '''
-            docker rm -f sentiment-staging 2>/dev/null || true
-
-            docker run --rm \
-              --volumes-from jenkins \
-              -w $WORKSPACE/infra \
-              hashicorp/terraform:latest \
-              apply -auto-approve tfplan
-            '''
-        }
-    }
-}
-
-    steps {
-        dir('infra') {
-            sh '''
-            docker run --rm \
-              --volumes-from jenkins \
-              -w $WORKSPACE/infra \
-              hashicorp/terraform:latest \
-              apply -auto-approve tfplan
-            '''
-        }
-    }
-}
-
 
         stage('Trivy Scan') {
             steps {
-        sh """
-        docker run --rm \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        aquasec/trivy:latest image \
-        --severity HIGH,CRITICAL \
-        --exit-code 0 \
-        ${IMAGE_NAME}:${IMAGE_TAG}
-        """
-    }
-}
+                sh '''
+                docker run --rm \
+                  -v /var/run/docker.sock:/var/run/docker.sock \
+                  aquasec/trivy:latest image \
+                  --severity HIGH,CRITICAL \
+                  --exit-code 0 \
+                  ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
 
         stage('Push') {
             when {
@@ -178,48 +163,35 @@ stage('Terraform Apply') {
                     env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
                 }
             }
-
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'github-token',
                     usernameVariable: 'REGISTRY_USER',
                     passwordVariable: 'REGISTRY_PASS'
                 )]) {
-                    sh """
-                    echo \$REGISTRY_PASS | docker login ghcr.io -u \$REGISTRY_USER --password-stdin
+                    sh '''
+                    echo $REGISTRY_PASS | docker login ghcr.io -u $REGISTRY_USER --password-stdin
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${REGISTRY}/${IMAGE_NAME}:latest
                     docker push ${REGISTRY}/${IMAGE_NAME}:latest
-                    """
+                    '''
                 }
             }
         }
-    
-stage('Deploy Staging') {
-    when {
-        expression {
-            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+
+        stage('Deploy Staging') {
+            when {
+                expression {
+                    env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+                }
+            }
+            steps {
+                sh '''
+                curl -f http://localhost:8001/health || exit 1
+                '''
+            }
         }
-    }
-
-    steps {
-        echo "Deploiement de ${IMAGE_NAME}:${IMAGE_TAG} en staging"
-
-        sh '''
-        docker rm -f sentiment-staging 2>/dev/null || true
-
-        docker run -d \
-          --name sentiment-staging \
-          --network cicd-network \
-          -p 8001:8000 \
-          sentiment-ai:${IMAGE_TAG}
-
-        docker ps | grep sentiment-staging
-        echo "Staging disponible sur http://localhost:8001/health"
-        '''
-    }
-}
 
 
 
