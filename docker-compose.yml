@@ -6,7 +6,7 @@ services:
     container_name: sentiment-staging
 
     ports:
-      - "8080:8000"
+      - "8001:8000"
 
     environment:
       - ENV=development
