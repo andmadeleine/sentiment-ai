@@ -183,20 +183,23 @@ pipeline {
             }
         }
 
-        stage('Deploy Staging') {
-            when {
-                expression {
-                    env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
-                }
-            }
-
-            steps {
-                sh '''
-                curl -f http://localhost:8001/health || exit 1
-                '''
-            }
+stage('Deploy Staging') {
+    when {
+        expression {
+            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
         }
     }
+
+    steps {
+        sh '''
+        docker run --rm \
+          --network cicd-network \
+          curlimages/curl:latest \
+          curl -f http://sentiment-staging:8000/health
+        '''
+    }
+}
+}
 
     post {
         always {
