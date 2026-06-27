@@ -20,9 +20,9 @@ resource "docker_container" "sentiment_staging" {
   image   = docker_image.sentiment.image_id
   restart = "unless-stopped"
 
- networks_advanced {
-  name = "cicd-network"
-}
+  networks_advanced {
+    name = "cicd-network"
+  }
 
   ports {
     internal = 8000
