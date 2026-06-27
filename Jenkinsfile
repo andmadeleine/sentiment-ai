@@ -133,6 +133,21 @@ stage('Terraform Apply') {
     steps {
         dir('infra') {
             sh '''
+            docker rm -f sentiment-staging 2>/dev/null || true
+
+            docker run --rm \
+              --volumes-from jenkins \
+              -w $WORKSPACE/infra \
+              hashicorp/terraform:latest \
+              apply -auto-approve tfplan
+            '''
+        }
+    }
+}
+
+    steps {
+        dir('infra') {
+            sh '''
             docker run --rm \
               --volumes-from jenkins \
               -w $WORKSPACE/infra \
