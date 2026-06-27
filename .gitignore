@@ -61,6 +61,15 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+*.tfstate
+*.tfstate.*
+.terraform/
+
 # Flask stuff:
 instance/
 .webassets-cache
@@ -216,3 +225,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+

@@ -95,6 +95,43 @@ pipeline {
     }
 }
 
+stage('Terraform Init') {
+    steps {
+        dir('infra') {
+            sh '''
+            terraform init
+            '''
+        }
+    }
+}
+
+stage('Terraform Plan') {
+    steps {
+        dir('infra') {
+            sh '''
+            terraform plan -out=tfplan
+            '''
+        }
+    }
+}
+
+stage('Terraform Apply') {
+    when {
+        expression {
+            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+        }
+    }
+
+    steps {
+        dir('infra') {
+            sh '''
+            terraform apply -auto-approve tfplan
+            '''
+        }
+    }
+}
+
+
         stage('Trivy Scan') {
             steps {
         sh """
