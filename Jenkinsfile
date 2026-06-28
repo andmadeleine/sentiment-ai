@@ -193,10 +193,14 @@ stage('Deploy Staging') {
 
     steps {
         sh '''
-        docker run --rm \
-          --network cicd-network \
-          curlimages/curl:latest \
-          curl -f http://sentiment-staging:8000/health
+        echo "Attente du démarrage de l'application..."
+            sleep 15
+
+                docker run --rm --network cicd-network curlimages/curl:latest \
+                curl --retry 10 \
+                --retry-delay 3 \
+                --retry-connrefused \
+                -f http://sentiment-staging:8000/health
         '''
     }
 }
