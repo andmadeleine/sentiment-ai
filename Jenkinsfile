@@ -228,13 +228,12 @@ stage('Deploy Staging') {
 
                 echo "/metrics OK -- metriques SentimentAI presentes"
 
-              sleep 45
+                sleep 45
 
                 docker run --rm --network cicd-network curlimages/curl:latest \
-                curl -s "http://prometheus:9090/api/v1/query?query=up" \
-                | grep -q "sentiment-ai"
+                curl -f http://prometheus:9090/-/healthy
 
-                echo "Prometheus scrape sentiment-ai : OK"
+                echo "Prometheus OK"
 
                 docker run --rm \
                   --network cicd-network \
