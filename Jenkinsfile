@@ -65,16 +65,16 @@ pipeline {
                 -e CI=true \
                 --name test-runner \
                 ${IMAGE_NAME}:${IMAGE_TAG} \
-                pytest tests/ -v \
+               pytest tests/ -v \
                 --cov=src \
-                --cov-report=xml:/tmp/coverage.xml \
+                --cov-report=xml \
                 --cov-report=term-missing \
                 --cov-fail-under=70
 
                 TEST_EXIT_CODE=$?
                 set -e
 
-                docker cp test-runner:/tmp/coverage.xml ./coverage.xml 2>/dev/null || true
+                docker cp test-runner:/app/coverage.xml ./coverage.xml
                 docker rm -f test-runner 2>/dev/null || true
 
                 exit $TEST_EXIT_CODE
@@ -106,6 +106,10 @@ pipeline {
                     -Dsonar.python.coverage.reportPaths=coverage.xml \
                     -Dsonar.sourceEncoding=UTF-8 \
                     -Dsonar.scanner.metadataFilePath="$WORKSPACE/report-task.txt"
+                    -Dsonar.sources=src \
+                    -Dsonar.tests=tests \
+                    -Dsonar.python.coverage.reportPaths=coverage.xml \
+                    -Dsonar.projectBaseDir=$WORKSPACE
                     '''
                 }
             }
