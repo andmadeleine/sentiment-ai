@@ -238,7 +238,7 @@ stage('Deploy Staging') {
                 docker run --rm \
                   --network cicd-network \
                   curlimages/curl:latest \
-                  curl -f http://grafana:3000/api/health
+                  curl -f http://grafana:3000/login
 
                 echo "Grafana OK"
                 '''
