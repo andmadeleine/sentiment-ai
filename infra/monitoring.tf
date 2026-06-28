@@ -13,6 +13,10 @@ resource "docker_container" "prometheus" {
     "--storage.tsdb.path=/prometheus"
   ]
 
+  networks_advanced {
+    name = "cicd-network"
+  }
+
   ports {
     internal = 9090
     external = 9090
