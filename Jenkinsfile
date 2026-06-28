@@ -245,11 +245,18 @@ stage('Smoke Test') {
         '''
     }
 
-    post {
+       post {
+        always {
+            sh 'docker compose down -v 2>/dev/null || true'
+        }
+
+        success {
+            echo "Pipeline reussi. Image : ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+        }
+
         failure {
-            sh 'docker logs prometheus || true'
-            sh 'docker logs sentiment-staging || true'
-            echo 'Smoke Test KO -- voir logs ci-dessus'
+            echo 'Pipeline echoue. Consultez les logs.'
         }
     }
 }
+
