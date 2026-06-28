@@ -199,7 +199,7 @@ stage('Deploy Staging') {
         '''
     }
 }
-}
+
 
 stage('Smoke Test') {
     when {
