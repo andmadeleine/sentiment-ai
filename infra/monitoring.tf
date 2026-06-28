@@ -18,11 +18,11 @@ resource "docker_container" "prometheus" {
     external = 9090
   }
 
-volumes {
-  host_path      = abspath("${path.module}/../monitoring")
-  container_path = "/config"
-  read_only      = true
-}
+  volumes {
+    host_path      = abspath("${path.module}/../monitoring")
+    container_path = "/config"
+    read_only      = true
+  }
 }
 
 resource "docker_image" "grafana" {
