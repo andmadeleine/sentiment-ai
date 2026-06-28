@@ -8,9 +8,10 @@ resource "docker_container" "prometheus" {
   image   = docker_image.prometheus.image_id
   restart = "unless-stopped"
 
-  networks_advanced {
-    name = "cicd-network"
-  }
+  command = [
+    "--config.file=/config/prometheus.yml",
+    "--storage.tsdb.path=/prometheus"
+  ]
 
   ports {
     internal = 9090
@@ -19,7 +20,7 @@ resource "docker_container" "prometheus" {
 
 volumes {
   host_path      = abspath("${path.module}/../monitoring")
-  container_path = "/etc/prometheus"
+  container_path = "/config"
   read_only      = true
 }
 }
