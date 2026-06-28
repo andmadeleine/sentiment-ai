@@ -201,17 +201,55 @@ stage('Deploy Staging') {
 }
 }
 
+stage('Smoke Test') {
+    when {
+        expression {
+            env.GIT_BRANCH == 'origin/main' || env.BRANCH_NAME == 'main'
+        }
+    }
+
+    steps {
+        sh '''
+        echo "Attente demarrage (10s)..."
+        sleep 10
+
+        docker run --rm \
+          --network cicd-network \
+          curlimages/curl:latest \
+          curl -f http://sentiment-staging:8000/health
+
+        echo "/health OK"
+
+        docker run --rm \
+          --network cicd-network \
+          curlimages/curl:latest \
+          curl -s http://sentiment-staging:8000/metrics | grep -q sentiment_predictions_total
+
+        echo "/metrics OK -- metriques SentimentAI presentes"
+
+        sleep 20
+
+        docker run --rm \
+          --network cicd-network \
+          curlimages/curl:latest \
+          curl -s "http://prometheus:9090/api/v1/query?query=up{job='sentiment-ai'}" | grep -q '"value":.*"1"'
+
+        echo "Prometheus scrape sentiment-ai : UP"
+
+        docker run --rm \
+          --network cicd-network \
+          curlimages/curl:latest \
+          curl -f http://grafana:3000/api/health
+
+        echo "Grafana OK"
+        '''
+    }
+
     post {
-        always {
-            sh 'docker compose down -v 2>/dev/null || true'
-        }
-
-        success {
-            echo "Pipeline reussi. Image : ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-        }
-
         failure {
-            echo 'Pipeline echoue. Consultez les logs.'
+            sh 'docker logs prometheus || true'
+            sh 'docker logs sentiment-staging || true'
+            echo 'Smoke Test KO -- voir logs ci-dessus'
         }
     }
 }
