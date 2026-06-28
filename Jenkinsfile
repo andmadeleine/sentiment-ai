@@ -244,7 +244,7 @@ stage('Smoke Test') {
         echo "Grafana OK"
         '''
     }
-
+}
        post {
         always {
             sh 'docker compose down -v 2>/dev/null || true'
